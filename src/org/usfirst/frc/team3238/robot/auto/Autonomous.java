@@ -2,18 +2,26 @@ package org.usfirst.frc.team3238.robot.auto;
 
 import edu.wpi.cscore.UsbCamera;
 import edu.wpi.first.wpilibj.CameraServer;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import org.usfirst.frc.team3238.robot.Constants;
 import org.usfirst.frc.team3238.robot.subsystems.Chassis;
 import org.usfirst.frc.team3238.robot.subsystems.Collector;
 import org.usfirst.frc.team3238.robot.utils.POVState;
 import org.usfirst.frc.team3238.robot.utils.Utils;
 
+/**
+ * Autonomous class, controls all actions during the 15 second start of each match with no driver control
+ */
 public class Autonomous implements Vision.VisionListener
 {
     private Chassis drive;
     private Collector collect;
 
     private Vision vision;
+
+    private SendableChooser<String> chooser;
 
     private int position = 0; // -1 for left, 0 for center, 1 for right, anything else for nothing
     private boolean placeAndRun = false; // true to attempt running down the field after placing
@@ -24,6 +32,12 @@ public class Autonomous implements Vision.VisionListener
     private boolean[] phaseBegun = new boolean[6];
     private boolean autoDone;
 
+    /**
+     * Starts camera, stores subsystems in
+     *
+     * @param chassis
+     * @param collector
+     */
     public Autonomous(Chassis chassis, Collector collector)
     {
         UsbCamera cam = CameraServer.getInstance().startAutomaticCapture(Constants.Robot.VISION_CAMERA_ID);
@@ -31,12 +45,32 @@ public class Autonomous implements Vision.VisionListener
         collect = collector;
 
         vision = new Vision(cam, this);
+        vision.start();
     }
 
+    /**
+     * Sends auto routine options to smart dashboard for selection
+     */
+    public void select()
+    {
+        chooser = new SendableChooser<>();
+        chooser.addObject("Boiler Gear", "boilerGear");
+        chooser.addObject("Boiler Gear Run", "boilerGearRun");
+        chooser.addDefault("Center Gear", "centerGear");
+        chooser.addObject("Retrieval Gear", "retrGear");
+        chooser.addObject("Retrieval Gear Run", "retrGearRun");
+        chooser.addObject("None", "none");
+        SmartDashboard.putData("Auto Routine", chooser);
+    }
+
+    /**
+     * Resets phase data, sets up subsystems
+     */
     public void init()
     {
-        position = 0;
-        placeAndRun = false;
+        String routine = chooser.getSelected();
+        boolean isRedAlliance = DriverStation.getInstance().getAlliance().toString().equals("Red");
+        setData(routine, isRedAlliance);
 
         visionDone = false;
         vision.stopProcessing();
@@ -55,6 +89,9 @@ public class Autonomous implements Vision.VisionListener
         collect.init();
     }
 
+    /**
+     * Main auto method, must be called each loop to make anything happen
+     */
     public void run()
     {
 
@@ -67,7 +104,7 @@ public class Autonomous implements Vision.VisionListener
         {
             if(!phaseBegun[0])
             {
-                drive.moveMagic(90);
+                drive.moveMagic(73.25);
                 phaseBegun[0] = true;
             }
             if(drive.isMotionMagicFinished())
@@ -198,11 +235,20 @@ public class Autonomous implements Vision.VisionListener
                 autoDone = true;
             }
         }
+        else
+        {
+            autoDone = true;
+        }
 
         drive.drive(0.0, 0.0);
         collect.run(new POVState());
     }
 
+    /**
+     * Listener for vision data
+     *
+     * @param output data transfer object with angle and distance to target
+     */
     @Override
     public void onFrameReady(Vision.VisionOutput output)
     {
@@ -218,5 +264,27 @@ public class Autonomous implements Vision.VisionListener
         {
             visionDone = true;
         }
+    }
+
+    private void setData(String choice, boolean isRed)
+    {
+        if((choice.contains("retrGear") && isRed) || (choice.contains("boilerGear") && !isRed))
+        {
+            position = -1;
+        }
+        else if(choice.equals("centerGear"))
+        {
+            position = 0;
+        }
+        else if((choice.contains("boilerGear") && isRed) || (choice.contains("retrGear") && !isRed))
+        {
+            position = 1;
+        }
+        else if(choice.equals("none"))
+        {
+            position = -2;
+        }
+
+        placeAndRun = choice.contains("Run");
     }
 }

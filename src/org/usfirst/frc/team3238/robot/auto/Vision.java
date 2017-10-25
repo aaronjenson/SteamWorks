@@ -13,6 +13,10 @@ import org.usfirst.frc.team3238.robot.utils.Utils;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Vision class takes input from a camera and identifies the two pieces of retro-reflective tape next to the peg.
+ * Calculates distance and angle and sends to another class.
+ */
 public class Vision extends Thread
 {
 
@@ -40,6 +44,9 @@ public class Vision extends Thread
     private static final double CONTOUR_MIN_RATIO = 0.2;
     private static final double CONTOUR_MAX_RATIO = 1;
 
+    /**
+     * Data transfer object for distance and angle to target
+     */
     static class VisionOutput
     {
         double angle;
@@ -52,6 +59,9 @@ public class Vision extends Thread
         }
     }
 
+    /**
+     * Interface used to notify other classes of new data
+     */
     public interface VisionListener
     {
         void onFrameReady(VisionOutput output);
@@ -68,7 +78,13 @@ public class Vision extends Thread
 
     private boolean isProcessing = false;
 
-    Vision(UsbCamera source, VisionListener listener)
+    /**
+     * Sets up camera, adds listener to this class
+     *
+     * @param source
+     * @param listener
+     */
+    public Vision(UsbCamera source, VisionListener listener)
     {
         super();
         this.listener = listener;
@@ -85,16 +101,25 @@ public class Vision extends Thread
         mask_serve = CameraServer.getInstance().putVideo("mask", FRAME_WIDTH, FRAME_HEIGHT);
     }
 
-    void startProcessing()
+    /**
+     * Enables processing until stopProcessing() is called
+     */
+    public void startProcessing()
     {
         isProcessing = true;
     }
 
-    void stopProcessing()
+    /**
+     * Disables processing until startProcessing() is called
+     */
+    public void stopProcessing()
     {
         isProcessing = false;
     }
 
+    /**
+     * Main method, processes frames in a while loop if enabled.
+     */
     @Override
     public void run()
     {
@@ -114,7 +139,8 @@ public class Vision extends Thread
                     Imgproc.resize(sourceFrame, sourceFrame, new Size(FRAME_WIDTH, FRAME_HEIGHT));
                     Imgproc.cvtColor(sourceFrame, sourceFrame, Imgproc.COLOR_RGB2HSV);
 
-                    Core.inRange(sourceFrame, new Scalar(COLOR_MIN_H, COLOR_MIN_S, COLOR_MIN_V), new Scalar(COLOR_MAX_H, COLOR_MAX_S, COLOR_MAX_V), mask);
+                    Core.inRange(sourceFrame, new Scalar(COLOR_MIN_H, COLOR_MIN_S, COLOR_MIN_V),
+                                 new Scalar(COLOR_MAX_H, COLOR_MAX_S, COLOR_MAX_V), mask);
 
                     mask_serve.putFrame(mask);
 
@@ -157,13 +183,13 @@ public class Vision extends Thread
                     if(filteredContours.size() > 2)
                     {
                         filteredContours.sort((o1, o2) ->
-                        {
-                            double area1 = Imgproc.contourArea(o1);
-                            double area2 = Imgproc.contourArea(o2);
+                                              {
+                                                  double area1 = Imgproc.contourArea(o1);
+                                                  double area2 = Imgproc.contourArea(o2);
 
-                            return Double.compare(area1, area2);
+                                                  return Double.compare(area1, area2);
 
-                        });
+                                              });
                     }
 
                     if(filteredContours.size() > 1)

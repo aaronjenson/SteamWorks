@@ -5,12 +5,18 @@ import org.usfirst.frc.team3238.robot.Constants;
 import org.usfirst.frc.team3238.robot.utils.POVState;
 import org.usfirst.frc.team3238.robot.utils.Utils;
 
+/**
+ * Controls all movements of the collector. Controlled by Autonomous during auto, then by Robot during teleop.
+ */
 public class Collector
 {
     private CANTalon lift, left, right;
 
     private String state;
 
+    /**
+     * Sets up collector object with talons
+     */
     public Collector()
     {
         lift = new CANTalon(Constants.Collector.LIFT_TALON_ID);
@@ -31,36 +37,61 @@ public class Collector
         state = "inactive";
     }
 
+    /**
+     * Gets string of state value, for checking if a task has finished
+     *
+     * @return state of collector, as a string
+     */
     public String getState()
     {
         return state;
     }
 
+    /**
+     * Checks that each talon is within acceptable temperature and current. Call during robotPeriodic
+     */
     public void loop()
     {
         monitorTalons();
     }
 
+    /**
+     * Resets collector state to inactive
+     */
     public void init()
     {
         state = "inactive";
     }
 
+    /**
+     * Begins process of collecting a gear
+     */
     public void pickup()
     {
         state = "collecting";
     }
 
+    /**
+     * Begins process of placing a gear
+     */
     public void place()
     {
         state = "placing";
     }
 
+    /**
+     * Cancels any current process begins lifting collector up
+     */
     public void stop()
     {
         state = "inactive";
     }
 
+    /**
+     * Main collector method, must be called for any movement to occur
+     *
+     * @param pov pov state object to control manual mode
+     */
     public void run(POVState pov)
     {
         switch(state)

@@ -5,6 +5,9 @@ import edu.wpi.first.wpilibj.DriverStation;
 import org.usfirst.frc.team3238.robot.Constants;
 import org.usfirst.frc.team3238.robot.utils.Utils;
 
+/**
+ * Controls all movements of the drive base. Controlled by Autonomous during auto, then by Robot during teleop.
+ */
 public class Chassis
 {
     private CANTalon r, rb, l, lb;
@@ -12,6 +15,9 @@ public class Chassis
 
     private double rMotionTarget, lMotionTarget;
 
+    /**
+     * Sets up talon objects
+     */
     public Chassis()
     {
         r = new CANTalon(Constants.Chassis.RIGHT_A_TALON_ID);
@@ -127,63 +133,96 @@ public class Chassis
             case PercentVbus:
                 break;
             case Speed:
-                rSpeed = rSpeed * (Constants.Chassis.MAX_WHEEL_SPEED - Constants.Chassis.MIN_WHEEL_SPEED) + Constants.Chassis.MIN_WHEEL_SPEED;
-                lSpeed = lSpeed * (Constants.Chassis.MAX_WHEEL_SPEED - Constants.Chassis.MIN_WHEEL_SPEED) + Constants.Chassis.MIN_WHEEL_SPEED;
+                rSpeed = rSpeed * (Constants.Chassis.MAX_WHEEL_SPEED - Constants.Chassis.MIN_WHEEL_SPEED) +
+                         Constants.Chassis.MIN_WHEEL_SPEED;
+                lSpeed = lSpeed * (Constants.Chassis.MAX_WHEEL_SPEED - Constants.Chassis.MIN_WHEEL_SPEED) +
+                         Constants.Chassis.MIN_WHEEL_SPEED;
                 break;
             default:
-                DriverStation.reportError("Drive loop missing case for control mode: " + rMode.name(), false);
+                Utils.say("Default case in chassis class, case is " + rMode.name());
         }
         r.set(rSpeed);
         l.set(lSpeed);
     }
 
+    /**
+     * Set drive mode to closed-loop speed
+     */
     public void setPIDMode()
     {
         lastOpenMode = CANTalon.TalonControlMode.Speed;
         setControlMode(CANTalon.TalonControlMode.Speed);
     }
 
+    /**
+     * Set drive mode to basic percentage
+     */
     public void setPercentMode()
     {
         lastOpenMode = CANTalon.TalonControlMode.PercentVbus;
         setControlMode(CANTalon.TalonControlMode.PercentVbus);
     }
 
+    /**
+     * Set drive mode to compensate for battery voltage, open-loop
+     */
     public void setVoltageMode()
     {
         lastOpenMode = CANTalon.TalonControlMode.Voltage;
         setControlMode(CANTalon.TalonControlMode.Voltage);
     }
 
+    /**
+     * Begin a motion magic motion profile in a straight line for a specified distance
+     *
+     * @param distance distance to move, inches
+     */
     public void moveMagic(double distance)
     {
-        rMotionTarget = distance / (Constants.Chassis.WHEEL_DIAMETER * Math.PI);
-        lMotionTarget = distance / (Constants.Chassis.WHEEL_DIAMETER * Math.PI);
+        rMotionTarget = r.getPosition() + (distance / (Constants.Chassis.WHEEL_DIAMETER * Math.PI));
+        lMotionTarget = l.getPosition() + (distance / (Constants.Chassis.WHEEL_DIAMETER * Math.PI));
 
         setControlMode(CANTalon.TalonControlMode.MotionMagic);
     }
 
+    /**
+     * Begin a motion magic motion profile to turn on the center point for specified degrees
+     *
+     * @param degrees degrees to turn, positive is clockwise
+     */
     public void turnMagic(double degrees)
     {
-        rMotionTarget = -Constants.Chassis.WHEEL_BASE_WIDTH * Math.PI * (degrees / 360);
-        lMotionTarget = Constants.Chassis.WHEEL_BASE_WIDTH * Math.PI * (degrees / 360);
+        rMotionTarget = r.getPosition() - (Constants.Chassis.WHEEL_BASE_WIDTH * Math.PI * (degrees / 360));
+        lMotionTarget = l.getPosition() + (Constants.Chassis.WHEEL_BASE_WIDTH * Math.PI * (degrees / 360));
 
         setControlMode(CANTalon.TalonControlMode.MotionMagic);
     }
 
+    /**
+     * Enable limiting the current of each talon to 40 amps
+     */
     public void enableCurrentLimit()
     {
         setCurrentLimitState(true);
     }
 
+    /**
+     * Disable limiting the current of talons
+     */
     public void disableCurrentLimit()
     {
         setCurrentLimitState(false);
     }
 
+    /**
+     * Determine if motion magic has finished. Will return true only if robot is still in same position as it ended the routine in.
+     *
+     * @return true if motion magic routine has finished
+     */
     public boolean isMotionMagicFinished()
     {
-        return (Math.abs(r.getPosition() - rMotionTarget) < Constants.Chassis.MOTION_MAGIC_ERROR) && (Math.abs(l.getPosition() - lMotionTarget) < Constants.Chassis.MOTION_MAGIC_ERROR);
+        return (Math.abs(r.getPosition() - rMotionTarget) < Constants.Chassis.MOTION_MAGIC_ERROR) &&
+               (Math.abs(l.getPosition() - lMotionTarget) < Constants.Chassis.MOTION_MAGIC_ERROR);
     }
 
     private void setControlMode(CANTalon.TalonControlMode mode)

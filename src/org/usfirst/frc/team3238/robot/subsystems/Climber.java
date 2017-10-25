@@ -5,12 +5,18 @@ import edu.wpi.first.wpilibj.DriverStation;
 import org.usfirst.frc.team3238.robot.Constants;
 import org.usfirst.frc.team3238.robot.utils.Utils;
 
+/**
+ * Controls movements of climber
+ */
 public class Climber
 {
     private CANTalon talon, slaveTalon;
 
     private String state;
 
+    /**
+     * Sets up talons for climber object
+     */
     public Climber()
     {
         talon = new CANTalon(Constants.Climber.MASTER_TALON_ID);
@@ -23,26 +29,41 @@ public class Climber
         slaveTalon.enableBrakeMode(false);
     }
 
+    /**
+     * Reset state to start teleop
+     */
     public void init()
     {
         state = "inactive";
     }
 
+    /**
+     * Checks talons for current and temperature, call in robotPeriodic
+     */
     public void loop()
     {
         monitorTalons();
     }
 
+    /**
+     * Change to up state
+     */
     public void up()
     {
         state = "up";
     }
 
+    /**
+     * Change to inactive state
+     */
     public void stop()
     {
         state = "inactive";
     }
 
+    /**
+     * Main method, must be called each loop to run any climber functions
+     */
     public void run()
     {
         switch(state)
