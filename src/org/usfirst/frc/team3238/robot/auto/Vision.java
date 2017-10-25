@@ -70,6 +70,7 @@ public class Vision extends Thread
     private CvSink sink;
     private VisionListener listener;
     private CvSource mask_serve;
+    private CvSource results_serve;
 
     private Mat sourceFrame;
     private Mat mask;
@@ -78,13 +79,15 @@ public class Vision extends Thread
 
     private boolean isProcessing = false;
 
+    private Scalar drawColor = new Scalar(8, 95, 91);
+
     /**
      * Sets up camera, adds listener to this class
      *
-     * @param source
-     * @param listener
+     * @param source   camera to use as source for vision
+     * @param listener implementation of listener interface to send results to
      */
-    public Vision(UsbCamera source, VisionListener listener)
+    Vision(UsbCamera source, VisionListener listener)
     {
         super();
         this.listener = listener;
@@ -99,12 +102,13 @@ public class Vision extends Thread
         filteredContours = new ArrayList<>();
 
         mask_serve = CameraServer.getInstance().putVideo("mask", FRAME_WIDTH, FRAME_HEIGHT);
+        results_serve = CameraServer.getInstance().putVideo("results", FRAME_WIDTH, FRAME_HEIGHT);
     }
 
     /**
      * Enables processing until stopProcessing() is called
      */
-    public void startProcessing()
+    void startProcessing()
     {
         isProcessing = true;
     }
@@ -112,7 +116,7 @@ public class Vision extends Thread
     /**
      * Disables processing until startProcessing() is called
      */
-    public void stopProcessing()
+    void stopProcessing()
     {
         isProcessing = false;
     }
@@ -194,21 +198,38 @@ public class Vision extends Thread
 
                     if(filteredContours.size() > 1)
                     {
-
                         Rect bounds1 = Imgproc.boundingRect(filteredContours.get(0));
                         Rect bounds2 = Imgproc.boundingRect(filteredContours.get(1));
 
-                        double centerX1 = bounds1.x + (0.5 * bounds1.width);
-                        double centerX2 = bounds2.x + (0.5 * bounds2.width);
+                        Imgproc.rectangle(sourceFrame, new Point(Math.min(bounds1.tl().x, bounds2.tl().x),
+                                                                 Math.min(bounds1.tl().y, bounds2.tl().y)),
+                                          new Point(Math.max(bounds1.br().x, bounds2.br().x),
+                                                    Math.max(bounds1.br().y, bounds2.br().y)), drawColor);
 
-                        double centerXOffset = (centerX1 - centerX2) / 2;
+                        double centerX1 = bounds1.x + (0.5 * bounds1.width);
+                        double centerY1 = bounds1.y + (0.5 * bounds1.height);
+                        double centerX2 = bounds2.x + (0.5 * bounds2.width);
+                        double centerY2 = bounds2.y + (0.5 * bounds2.height);
+
+                        Imgproc.drawMarker(sourceFrame, new Point(centerX1, centerY1), drawColor);
+                        Imgproc.drawMarker(sourceFrame, new Point(centerX2, centerY2), drawColor);
+
+                        double centerXOffset = Math.abs((centerX1 - centerX2) / 2);
                         double centerX = Math.min(centerX1, centerX2) + centerXOffset;
+                        double centerYOffset = Math.abs((centerY1 - centerY2) / 2);
+                        double centerY = Math.min(centerY1, centerY2) + centerYOffset;
+
+                        Imgproc.drawMarker(sourceFrame, new Point(centerX, centerY), drawColor);
 
                         double height = (bounds1.height + bounds2.height) / 2;
 
                         angle = ((centerX - (FRAME_WIDTH / 2)) / (FRAME_WIDTH / 2)) * CAMERA_FIELD_OF_VIEW;
                         distance = 2.5 / Math.tan((height / FRAME_HEIGHT) * CAMERA_FIELD_OF_VIEW * 0.5);
 
+                        Imgproc.putText(sourceFrame, "Angle: " + angle + "\nDistance: " + distance, new Point(15, 15),
+                                        1, 1.0, drawColor);
+
+                        results_serve.putFrame(sourceFrame);
                         listener.onFrameReady(new VisionOutput(distance, angle));
                     }
 
